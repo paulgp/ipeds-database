@@ -1,0 +1,14 @@
+[project]
+name = "ipeds-database"
+version = "1.0.0"
+description = "Build a harmonized DuckDB database from 20+ years of IPEDS higher education data"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.12",
+    "duckdb>=1.0",
+    "lxml>=5.0",
+    "pandas>=2.0",
+    "requests>=2.31",
+]

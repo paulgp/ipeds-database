@@ -1,0 +1,26 @@
+# Data (large; rebuilt from source)
+data/
+*.duckdb
+*.duckdb.wal
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# R
+.Rhistory
+.Rproj.user/
+.RData
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
