@@ -7,7 +7,7 @@ Build a harmonized [DuckDB](https://duckdb.org/) database from 20+ years of
 uv run python build_database.py
 ```
 
-The result is a ~1 GB database with **26 million rows** across **20 tables**
+The result is a ~1 GB database with **27 million rows** across **23 tables**
 covering every U.S. postsecondary institution from 1997 to 2024—admissions,
 enrollment, completions, tuition, financial aid, graduation rates, staffing,
 and more—ready to query with SQL.
@@ -86,6 +86,9 @@ con.sql("SELECT * FROM _metadata").show()
 | **`eap`** | Employees by assigned position | 2001–2023 | 8.7M |
 | **`sal_is`** | Instructional staff salaries | 2012–2023 | 195K |
 | **`al`** | Academic libraries | 2014–2023 | 39K |
+| **`f1a`** | Finance: GASB (public) — revenue, expenses, endowment, assets | 2002–2023 | 42K |
+| **`f2`** | Finance: FASB (private nonprofit) — revenue, expenses, endowment | 2001–2023 | 43K |
+| **`f3`** | Finance: for-profit — revenue, expenses | 2001–2023 | 59K |
 | **`flags`** | Survey response status flags | 2004–2024 | 148K |
 
 Every table has a **`unitid`** (institution ID) and **`year`** column for
@@ -126,6 +129,17 @@ The **`c_a`** (completions) table uses these key codes:
 | `award_level` | 5 = Bachelor's, 7 = Master's, 9 = Doctor's (pre-2010), 17 = Research doctorate (2008+), 18 = Professional practice doctorate (2008+) |
 | `ctotalt` | Total completions (2008+); use `COALESCE(ctotalt, crace24, crace15 + crace16)` for full series |
 
+The **`f1a`** (public) and **`f2`** (private nonprofit) finance tables include endowment data:
+
+| Column | Description |
+|--------|-------------|
+| `f1h01` / `f2h01` | Endowment value, beginning of fiscal year |
+| `f1h02` / `f2h02` | Endowment value, end of fiscal year |
+| `f1h03` / `f2h03` | Net change in endowment |
+| `f1h03a` / `f2h03a` | Contributions to endowment |
+| `f1h03b` / `f2h03b` | Investment return |
+| `f1h03c` / `f2h03c` | Amounts spent/withdrawn |
+
 All other tables preserve original IPEDS column names (lowercased) for
 compatibility with the [IPEDS data dictionary](https://nces.ed.gov/ipeds/datacenter/DataFiles.aspx).
 
@@ -142,6 +156,15 @@ FROM   adm a
 JOIN   hd h ON a.unitid = h.unitid AND a.year = h.year
 WHERE  a.year = 2023 AND a.applicants_total > 20000
 ORDER  BY admit_rate LIMIT 10;
+```
+
+**Top university endowments (FY2023):**
+```sql
+SELECT h.institution_name, h.state, CAST(f.f2h02 AS BIGINT) AS endowment
+FROM   f2 f
+JOIN   hd h ON f.unitid = h.unitid AND h.year = 2023
+WHERE  f.year = 2023 AND f.f2h02 > 0
+ORDER  BY endowment DESC LIMIT 10;
 ```
 
 **In-state vs. out-of-state enrollment (first-time undergrads):**
@@ -210,6 +233,10 @@ Key changes the builder handles:
   as net-price and income-bracket reporting expanded.
 - **Residence (EF_C):** Full institutional coverage in even years only
   (2009+ odd years cover ~2,200 vs ~5,500 institutions in even years).
+- **Finance (F1A/F2/F3):** Three separate tables by accounting standard—`f1a`
+  (GASB, public institutions), `f2` (FASB, private nonprofits), `f3`
+  (for-profit). Endowment columns use parallel naming (`f1h02` vs `f2h02`).
+  Column counts vary from 72 to 522 across years as reporting expanded.
 
 ### Missing Values
 

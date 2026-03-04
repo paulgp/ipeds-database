@@ -14,7 +14,7 @@ The builder downloads ZIP files from NCES, extracts CSV data, harmonizes
 column names and types across years, and loads everything into DuckDB.
 Downloaded files are cached in data/raw/ so subsequent runs skip downloads.
 
-Survey components (20 tables):
+Survey components (23 tables):
     hd       Institutional directory (name, location, control, Carnegie)
     ic       Institutional characteristics (programs, services, athletics)
     ic_ay    Academic year tuition and fees
@@ -34,6 +34,9 @@ Survey components (20 tables):
     eap      Employees by assigned position
     sal_is   Salaries of instructional staff
     al       Academic libraries
+    f1a      Finance: GASB (public institutions) — revenue, expenses, endowment
+    f2       Finance: FASB (private nonprofit) — revenue, expenses, endowment
+    f3       Finance: for-profit institutions — revenue, expenses
     flags    Survey response status flags
 """
 
@@ -163,6 +166,19 @@ def build_manifest():
     
     # FLAGS: Response status
     manifest["flags"] = [(y, f"FLAGS{y}") for y in range(2024, 2003, -1)]
+    
+    # Finance: F1A (GASB/public), F2 (FASB/private nonprofit), F3 (for-profit)
+    # Uses academic year naming like SFA (e.g., F2223_F1A for fiscal year ending 2023)
+    def _fin_files(suffix, start_yr=2001):
+        files = []
+        for end_yr in range(2023, start_yr, -1):
+            yr_code = f"{(end_yr-1) % 100:02d}{end_yr % 100:02d}"
+            files.append((end_yr, f"F{yr_code}_{suffix}"))
+        return files
+    
+    manifest["f1a"] = _fin_files("F1A", start_yr=2001)  # 2002–2023
+    manifest["f2"]  = _fin_files("F2", start_yr=2000)    # 2001–2023
+    manifest["f3"]  = _fin_files("F3", start_yr=2000)    # 2001–2023
     
     return manifest
 
@@ -640,6 +656,15 @@ def harmonize_al(df: pd.DataFrame, year: int) -> pd.DataFrame:
     return df
 
 
+def harmonize_finance(df: pd.DataFrame, year: int) -> pd.DataFrame:
+    """Harmonize finance data (F1A, F2, F3)."""
+    df = clean_column_names(df)
+    df = coerce_unitid(df)
+    df['year'] = year
+    df = clean_numeric_columns(df)
+    return df
+
+
 def harmonize_flags(df: pd.DataFrame, year: int) -> pd.DataFrame:
     """Harmonize response flags."""
     df = clean_column_names(df)
@@ -679,6 +704,9 @@ HARMONIZERS = {
     'sal_is': harmonize_sal,
     'sal': harmonize_sal,
     'al': harmonize_al,
+    'f1a': harmonize_finance,
+    'f2': harmonize_finance,
+    'f3': harmonize_finance,
     'flags': harmonize_flags,
 }
 

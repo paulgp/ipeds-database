@@ -113,9 +113,27 @@ ORDER BY close_date DESC
 LIMIT 20;
 
 
--- 10. Research doctorates by broad field (2024)
---     Award level 17 = Research/scholarship doctorate (2008+)
---     First 2 digits of CIP = broad field
+-- 10. Top endowments (FY2023)
+--     F1A = public institutions (GASB), F2 = private nonprofits (FASB)
+--     f1h02/f2h02 = endowment value, end of fiscal year
+SELECT institution_name, state, endowment_eoy,
+       CASE WHEN source = 'f2' THEN 'Private' ELSE 'Public' END AS sector
+FROM (
+    SELECT h.institution_name, h.state, CAST(f.f2h02 AS BIGINT) AS endowment_eoy, 'f2' AS source
+    FROM   f2 f JOIN hd h ON f.unitid = h.unitid AND h.year = 2023
+    WHERE  f.year = 2023 AND f.f2h02 > 0
+    UNION ALL
+    SELECT h.institution_name, h.state, CAST(f.f1h02 AS BIGINT), 'f1a'
+    FROM   f1a f JOIN hd h ON f.unitid = h.unitid AND h.year = 2023
+    WHERE  f.year = 2023 AND f.f1h02 > 0
+) combined
+ORDER BY endowment_eoy DESC
+LIMIT 20;
+
+
+-- 11. Research doctorates by broad field (2024)
+--      Award level 17 = Research/scholarship doctorate (2008+)
+--      First 2 digits of CIP = broad field
 SELECT
     LEFT(CAST(cipcode AS VARCHAR), 2) AS cip_2digit,
     SUM(CAST(COALESCE(ctotalt, crace24, crace15 + crace16) AS BIGINT)) AS doctorates
